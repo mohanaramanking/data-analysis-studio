@@ -1,0 +1,1425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111522">
+  <title>Data Studio — Explore your data</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #111522;
+      color: #eef0f7;
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: radial-gradient(ellipse at 92% 0%, #2d3053 0, transparent 32%), #111522;
+    }
+    button, input, select { font: inherit; }
+    button, label[for="file-input"] { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, label:focus-within { outline: 2px solid #a9a0ff; outline-offset: 2px; }
+
+    .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+    .sidebar { display: flex; flex-direction: column; gap: 25px; padding: 27px 19px; border-right: 1px solid #ffffff12; background: #141827dd; }
+    .brand { display: flex; align-items: center; gap: 11px; font-size: 1rem; font-weight: 800; letter-spacing: -.02em; }
+    .brand-mark { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 11px; background: linear-gradient(140deg, #a69aff, #65dec3); color: #17192a; font-size: 1.1rem; }
+    .side-label { margin: 2px 0 9px; color: #737d98; font-size: .68rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .nav { display: grid; gap: 5px; }
+    .nav-item { width: 100%; padding: 10px 12px; border: 0; border-radius: 9px; background: transparent; color: #aab1c6; text-align: left; }
+    .nav-item.active { background: #2a2d45; color: #f0efff; }
+    .nav-item span { margin-right: 10px; }
+    .dataset-card { margin-top: auto; padding: 14px; border: 1px solid #ffffff14; border-radius: 12px; background: #1b2031; }
+    .dataset-name { overflow: hidden; color: #e4e6f0; font-size: .83rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .dataset-meta { margin-top: 5px; color: #8e97b0; font-size: .72rem; }
+    .local-note { margin: 0; color: #818ba3; font-size: .72rem; line-height: 1.5; }
+
+    .main { width: min(1440px, 100%); margin: 0 auto; padding: 34px clamp(18px, 4vw, 52px) 55px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .crumb { color: #8992ab; font-size: .8rem; }
+    .top-actions { display: flex; gap: 9px; align-items: center; }
+    .button { min-height: 40px; padding: 0 14px; border: 1px solid #ffffff1c; border-radius: 9px; background: #22273a; color: #e5e7f2; font-size: .82rem; font-weight: 700; }
+    .button:hover { background: #2c3249; }
+    .button.primary { border-color: transparent; background: linear-gradient(110deg, #a69aff, #70ddc3); color: #17192a; }
+    .format-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 16px; }
+    .format-controls label { display: grid; gap: 5px; margin: 0; color: #aab1c6; font-size: .72rem; }
+    .format-controls select { min-height: 36px; padding: 0 9px; border: 1px solid #ffffff1a; border-radius: 8px; background: #111522; color: #dfe3ef; font-size: .75rem; }
+    h1 { margin: 28px 0 7px; font-size: clamp(2rem, 5vw, 3.25rem); letter-spacing: -.055em; }
+    .subtitle { margin: 0; color: #9da6bd; line-height: 1.55; }
+
+    .drop-zone { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-top: 25px; padding: 17px 19px; border: 1px dashed #73789a88; border-radius: 14px; background: #1b203184; transition: background .2s, border-color .2s; }
+    .drop-zone.dragging { border-color: #a69aff; background: #292644; }
+    .drop-content { display: flex; align-items: center; gap: 13px; }
+    .upload-icon { display: grid; flex: 0 0 42px; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #302d50; color: #c1baff; font-size: 1.25rem; }
+    .drop-title { font-size: .88rem; font-weight: 750; }
+    .drop-help { margin-top: 4px; color: #8c96ae; font-size: .74rem; }
+    #file-input { display: none; }
+
+    .notice { min-height: 1.4em; margin: 10px 0 0; color: #9ca6bd; font-size: .8rem; }
+    .notice.error { color: #ff9eab; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; margin-top: 18px; }
+    .metric { min-width: 0; padding: 16px 18px; border: 1px solid #ffffff13; border-radius: 13px; background: #191e2d; }
+    .metric-label { color: #939db4; font-size: .75rem; }
+    .metric-value { margin-top: 7px; overflow: hidden; font-size: 1.55rem; font-variant-numeric: tabular-nums; font-weight: 780; letter-spacing: -.035em; text-overflow: ellipsis; white-space: nowrap; }
+    .metric-hint { margin-top: 4px; color: #79849d; font-size: .7rem; }
+
+    .grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr); gap: 15px; margin-top: 17px; }
+    .card { min-width: 0; padding: 18px; border: 1px solid #ffffff13; border-radius: 14px; background: #191e2d; }
+    .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 15px; }
+    .card-title { margin: 0; font-size: .94rem; font-weight: 750; }
+    .card-subtitle { margin: 5px 0 0; color: #8994ab; font-size: .73rem; }
+    .chart-controls { display: flex; flex-wrap: wrap; gap: 7px; }
+    .chart-controls select { max-width: 170px; min-height: 34px; padding: 0 9px; border: 1px solid #ffffff1a; border-radius: 8px; background: #111522; color: #dfe3ef; font-size: .75rem; }
+    .chart-wrap { position: relative; min-height: 265px; }
+    #chart { display: block; width: 100%; height: 265px; }
+    .chart-empty { display: grid; position: absolute; inset: 0; place-items: center; color: #79849d; font-size: .8rem; text-align: center; }
+    [hidden] { display: none !important; }
+
+    .summary-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .summary-table th, .summary-table td { padding: 9px 5px; border-bottom: 1px solid #ffffff10; font-size: .76rem; }
+    .summary-table th { color: #858fa7; font-weight: 650; }
+    .summary-table td { color: #dce1ec; font-variant-numeric: tabular-nums; }
+    .summary-table tr:last-child td { border-bottom: 0; }
+    .type-tag { display: inline-block; padding: 3px 6px; border-radius: 5px; background: #2c3045; color: #c3bbff; font-size: .67rem; }
+    .table-card { margin-top: 15px; padding: 0; overflow: hidden; }
+    .table-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid #ffffff12; }
+    .table-toolbar .card-head { margin: 0; }
+    .table-search { width: min(240px, 42vw); min-height: 35px; padding: 0 10px; border: 1px solid #ffffff1a; border-radius: 8px; background: #111522; color: #eef0f7; font-size: .75rem; }
+    .table-scroll { overflow: auto; max-height: 390px; }
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
+    .data-table th { position: sticky; top: 0; z-index: 1; padding: 11px 15px; background: #202638; color: #9ca6bd; font-size: .71rem; font-weight: 720; }
+    .data-table td { max-width: 280px; overflow: hidden; padding: 10px 15px; border-top: 1px solid #ffffff0e; color: #d9deea; font-size: .75rem; text-overflow: ellipsis; }
+    .data-table tr:hover td { background: #222a3c; }
+    .pagination { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 17px; border-top: 1px solid #ffffff12; color: #8d97ad; font-size: .73rem; }
+    .page-buttons { display: flex; gap: 7px; }
+    .page-buttons button { min-height: 30px; padding: 0 10px; border: 1px solid #ffffff19; border-radius: 7px; background: #22273a; color: #dfe2ee; font-size: .73rem; }
+    .page-buttons button:disabled { opacity: .4; cursor: default; }
+
+    @media (max-width: 1000px) {
+      .app { grid-template-columns: 205px minmax(0, 1fr); }
+      .grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { flex-direction: row; align-items: center; gap: 12px; padding: 12px 15px; border-right: 0; border-bottom: 1px solid #ffffff12; }
+      .sidebar > :not(.brand) { display: none; }
+      .main { padding: 22px 14px 40px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .drop-zone { align-items: flex-start; flex-direction: column; }
+      .card-head { flex-direction: column; }
+      .chart-controls { width: 100%; }
+      .chart-controls select { flex: 1; max-width: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+    @media print {
+      body { background: white !important; color: black !important; }
+      .app { display: block !important; }
+      body.print-answer .app > :not(main), body.print-answer main > :not(#ask-card),
+      body.print-data .app > :not(main), body.print-data main > :not(#print-data) { display: none !important; }
+      body.print-answer #ask-card, body.print-data #print-data { display: block !important; border: 0; background: white; color: black; }
+      body.print-answer #answer, body.print-answer #ask-title, body.print-answer .card-subtitle,
+      body.print-data #print-data { color: black !important; }
+      body.print-answer #question-form { display: none !important; }
+      body.print-answer #answer table, body.print-data table { width: 100%; border-collapse: collapse; }
+      body.print-answer #answer th, body.print-answer #answer td, body.print-data th, body.print-data td { border: 1px solid #888; color: black; background: white; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">▥</span> Data Studio</div>
+      <div>
+        <p class="side-label">Workspace</p>
+        <nav class="nav" aria-label="Workspace sections">
+          <button class="nav-item active" type="button"><span>◫</span>Overview</button>
+          <button class="nav-item" type="button" id="table-nav"><span>▤</span>Data preview</button>
+          <button class="nav-item" type="button" id="chart-nav"><span>▥</span>Chart explorer</button>
+        </nav>
+      </div>
+      <div>
+        <p class="side-label">Current dataset</p>
+        <div class="dataset-card">
+          <div class="dataset-name" id="dataset-name">Sample sales data</div>
+          <div class="dataset-meta" id="dataset-meta">Loading dataset…</div>
+        </div>
+      </div>
+      <p class="local-note">🔒 Your data is processed locally in this browser. Files are not uploaded.</p>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="crumb">Workspace <span aria-hidden="true">/</span> Overview</div>
+        <div class="top-actions">
+          <button class="button" id="sample-button" type="button">Load sample</button>
+          <label class="button primary" for="file-input">＋ Import CSV</label>
+          <input id="file-input" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values">
+        </div>
+      </div>
+      <div class="format-controls no-print" aria-label="Number formatting">
+        <label for="number-format">Display format
+          <select id="number-format">
+            <option value="auto">Auto</option>
+            <option value="number">Number</option>
+            <option value="currency">Currency</option>
+            <option value="percent">Percent</option>
+            <option value="date">Date</option>
+          </select>
+        </label>
+        <label for="currency-code">Currency symbol
+          <select id="currency-code">
+            <option value="USD">USD $</option><option value="INR">INR ₹</option>
+            <option value="EUR">EUR €</option><option value="GBP">GBP £</option>
+            <option value="JPY">JPY ¥</option><option value="CAD">CAD $</option>
+            <option value="AUD">AUD $</option><option value="CNY">CNY ¥</option>
+          </select>
+        </label>
+        <span class="card-subtitle">Auto detects currency, percent, date, and number columns. Choose a currency for money fields.</span>
+      </div>
+
+      <h1>Explore your data.</h1>
+      <p class="subtitle">Turn a spreadsheet into a clear picture. Start with a sample, or import your own CSV file.</p>
+
+      <section class="drop-zone" id="drop-zone" aria-label="Import a CSV file">
+        <div class="drop-content">
+          <span class="upload-icon" aria-hidden="true">⇧</span>
+          <div>
+            <div class="drop-title">Drop a CSV file here</div>
+            <div class="drop-help">CSV or TSV · Data stays on this device</div>
+          </div>
+        </div>
+        <label class="button" for="file-input">Choose file</label>
+      </section>
+      <p class="notice" id="notice" role="status" aria-live="polite"></p>
+
+      <section class="metrics" aria-label="Dataset overview">
+        <article class="metric"><div class="metric-label">Total rows</div><div class="metric-value" id="metric-rows">—</div><div class="metric-hint">Records in this dataset</div></article>
+        <article class="metric"><div class="metric-label">Columns</div><div class="metric-value" id="metric-columns">—</div><div class="metric-hint">Fields available to explore</div></article>
+        <article class="metric"><div class="metric-label">Numeric fields</div><div class="metric-value" id="metric-numeric">—</div><div class="metric-hint">Ready for calculations</div></article>
+        <article class="metric"><div class="metric-label">Missing values</div><div class="metric-value" id="metric-missing">—</div><div class="metric-hint">Blank cells across the data</div></article>
+      </section>
+
+      <section class="grid" aria-label="Charts and column summary">
+        <article class="card" id="chart-card">
+          <div class="card-head">
+            <div><h2 class="card-title">Chart explorer</h2><p class="card-subtitle">Compare values across groups in your dataset.</p></div>
+            <div class="chart-controls">
+              <select id="chart-type" aria-label="Chart type">
+                <optgroup label="Compare categories">
+                  <option value="bar">Bar chart</option>
+                  <option value="horizontal-bar">Horizontal bar</option>
+                  <option value="stacked-bar">Stacked bar</option>
+                  <option value="line">Line chart</option>
+                  <option value="step">Step line</option>
+                  <option value="area">Area chart</option>
+                  <option value="stacked-area">Stacked area</option>
+                  <option value="lollipop">Lollipop chart</option>
+                  <option value="pareto">Pareto chart</option>
+                  <option value="funnel">Funnel chart</option>
+                  <option value="waterfall">Waterfall chart</option>
+                </optgroup>
+                <optgroup label="Distribution">
+                  <option value="pie">Pie chart</option>
+                  <option value="doughnut">Doughnut chart</option>
+                  <option value="polar-area">Polar area</option>
+                  <option value="histogram">Histogram</option>
+                  <option value="box">Box plot</option>
+                </optgroup>
+                <optgroup label="Relationship">
+                  <option value="scatter">Scatter plot</option>
+                  <option value="bubble">Bubble chart</option>
+                  <option value="radar">Radar chart</option>
+                </optgroup>
+              </select>
+              <select id="group-select" aria-label="Group chart by column"></select>
+              <select id="value-select" aria-label="Chart numeric values"></select>
+              <select id="x-select" aria-label="Scatter plot horizontal axis"></select>
+              <select id="size-select" aria-label="Bubble size numeric values"></select>
+              <select id="series-select" aria-label="Stacked chart series"></select>
+              <select id="aggregation-select" aria-label="Chart aggregation">
+                <option value="sum">Sum</option><option value="average">Average</option><option value="count">Count</option>
+              </select>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chart" role="img" aria-label="Chart of selected data"></canvas>
+            <div class="chart-empty" id="chart-empty" hidden>Select a categorical column to group the chart.</div>
+          </div>
+        </article>
+        <article class="card">
+          <div class="card-head"><div><h2 class="card-title">Column summary</h2><p class="card-subtitle">Detected type and completeness.</p></div></div>
+          <div style="overflow:auto;max-height:300px">
+            <table class="summary-table">
+              <thead><tr><th>Column</th><th>Type</th><th>Missing</th></tr></thead>
+              <tbody id="summary-body"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="card" id="ask-card" style="margin-top:15px" aria-labelledby="ask-title">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title" id="ask-title">Ask your data</h2>
+            <p class="card-subtitle">Ask a question in plain language. Answers are calculated locally from the loaded rows.</p>
+          </div>
+        </div>
+        <form id="question-form" style="display:flex;gap:9px;flex-wrap:wrap">
+          <input id="question-input" type="search" aria-label="Ask a question about your data" placeholder="e.g. What is total revenue by region?" style="flex:1;min-width:220px;min-height:42px;padding:0 12px;border:1px solid #ffffff1a;border-radius:9px;background:#111522;color:#eef0f7">
+          <button class="button primary" type="submit">Ask question</button>
+          <button class="button" id="print-answer" type="button" hidden>Print answer</button>
+        </form>
+        <p class="card-subtitle ask-examples" style="margin-top:10px">Try: “How many rows?”, “Average profit by product”, “Which region has the most sales?”, “Top 3 products by units”, or “Show rows where region is North”.</p>
+        <div id="answer" role="status" aria-live="polite" style="margin-top:13px;color:#dce1ec;font-size:.84rem;line-height:1.55"></div>
+      </section>
+
+      <section id="print-data" hidden></section>
+      <section class="card table-card" id="table-card">
+        <div class="table-toolbar">
+          <div class="card-head"><div><h2 class="card-title">Data preview</h2><p class="card-subtitle" id="preview-subtitle">First rows of your dataset</p></div></div>
+          <div class="no-print" style="display:flex;gap:8px;align-items:center">
+            <input class="table-search" id="table-search" type="search" placeholder="Filter rows…" aria-label="Filter preview rows">
+            <button class="button" id="print-data-button" type="button">Print data</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead id="table-head"></thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <span id="page-label">Page 1</span>
+          <div class="page-buttons"><button id="prev-page" type="button">← Previous</button><button id="next-page" type="button">Next →</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const sampleCsv = `Date,Region,Product,Units,Revenue,Profit
+2026-01-03,North,Notebook,42,630,210
+2026-01-05,South,Pen Set,78,390,145
+2026-01-08,East,Desk Lamp,16,960,310
+2026-01-12,West,Notebook,55,825,280
+2026-01-16,North,Desk Lamp,21,1260,420
+2026-01-20,South,Notebook,38,570,190
+2026-01-24,East,Pen Set,92,460,170
+2026-01-28,West,Desk Lamp,19,1140,365
+2026-02-02,North,Pen Set,64,320,118
+2026-02-06,South,Desk Lamp,25,1500,510
+2026-02-10,East,Notebook,47,705,235
+2026-02-14,West,Pen Set,83,415,150
+2026-02-18,North,Notebook,61,915,315
+2026-02-22,South,Pen Set,70,350,132
+2026-02-26,East,Desk Lamp,23,1380,470
+2026-03-02,West,Notebook,49,735,250
+2026-03-06,North,Desk Lamp,18,1080,360
+2026-03-10,South,Notebook,52,780,270
+2026-03-14,East,Pen Set,88,440,160
+2026-03-18,West,Desk Lamp,27,1620,550`;
+
+    const state = { headers: [], rows: [], types: [], page: 0, pageSize: 10, filtered: [] };
+    const $ = (id) => document.getElementById(id);
+
+    function parseDelimited(text, delimiter) {
+      const records = [];
+      let row = [];
+      let cell = "";
+      let quoted = false;
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (quoted) {
+          if (char === '"') {
+            if (text[i + 1] === '"') { cell += '"'; i++; }
+            else quoted = false;
+          } else {
+            cell += char;
+          }
+        } else if (char === '"' && cell.length === 0) {
+          quoted = true;
+        } else if (char === delimiter) {
+          row.push(cell);
+          cell = "";
+        } else if (char === "\n" || char === "\r") {
+          row.push(cell);
+          if (row.some((value) => value.trim() !== "")) records.push(row);
+          row = [];
+          cell = "";
+          if (char === "\r" && text[i + 1] === "\n") i++;
+        } else {
+          cell += char;
+        }
+      }
+      if (quoted) throw new Error("This file has an unclosed quoted field.");
+      row.push(cell);
+      if (row.some((value) => value.trim() !== "")) records.push(row);
+      if (!records.length) throw new Error("The file is empty.");
+      const width = Math.max(...records.map((record) => record.length));
+      const headers = records[0].map((value, index) => (value.trim() || "Column " + (index + 1)).replace(/^\uFEFF/, ""));
+      while (headers.length < width) headers.push("Column " + (headers.length + 1));
+      const data = records.slice(1).map((record) => {
+        const result = record.slice(0, width);
+        while (result.length < width) result.push("");
+        return result.map((value) => value.trim());
+      });
+      return { headers, rows: data };
+    }
+
+    function parseCsv(text) {
+      const firstLine = text.split(/\r?\n/, 1)[0] || "";
+      const delimiters = [",", "\t", ";"];
+      const delimiter = delimiters.sort((a, b) => firstLine.split(b).length - firstLine.split(a).length)[0];
+      return parseDelimited(text, delimiter);
+    }
+
+    function numericValue(value) {
+      const source = String(value).trim();
+      const negative = /^\(.*\)$/.test(source);
+      let cleaned = source.replace(/[($€£¥₹₩₽₺₫₪₦₱฿₲₴₵₸₼₾\s'’)]/g, "").replace(/\b[A-Za-z]{2,3}\b/g, "");
+      const comma = cleaned.lastIndexOf(",");
+      const dot = cleaned.lastIndexOf(".");
+      if (comma >= 0 && dot >= 0) {
+        cleaned = comma > dot
+          ? cleaned.replace(/\./g, "").replace(",", ".")
+          : cleaned.replace(/,/g, "");
+      } else if (comma >= 0) {
+        const trailingDigits = cleaned.length - comma - 1;
+        cleaned = trailingDigits > 0 && trailingDigits <= 2
+          ? cleaned.replace(",", ".")
+          : cleaned.replace(/,/g, "");
+      }
+      if (!cleaned || !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?%?$/.test(cleaned)) return null;
+      const result = Number(cleaned.replace(/%$/, "")) * (negative ? -1 : 1);
+      return Number.isFinite(result) ? result : null;
+    }
+
+    function formatShort(value) {
+      return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(value);
+    }
+
+    function isCurrencyColumn(index) {
+      return /\b(revenue|sales|price|cost|profit|amount|income|expense|salary|wage|balance|payment|fee|tax|budget|value|currency|usd|inr|eur|gbp|jpy|cad|aud|cny)\b/i.test(state.headers[index] || "");
+    }
+
+    function isPercentColumn(index) {
+      return /\b(percent|percentage|margin|rate|ratio|growth|change)\b|%/i.test(state.headers[index] || "");
+    }
+
+    function formatValue(value, index, mode = $("number-format").value) {
+      if (value === "" || value === null || value === undefined) return "—";
+      if (state.types[index] === "Date" || mode === "date") {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? String(value) : new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+      }
+      const numeric = numericValue(value);
+      if (numeric === null) return String(value);
+      const header = state.headers[index] || "";
+      const actualMode = mode === "auto"
+        ? isCurrencyColumn(index) ? "currency" : isPercentColumn(index) ? "percent" : "number"
+        : mode;
+      if (actualMode === "currency") {
+        const taggedCode = header.match(/\b[A-Z]{3}\b/i)?.[0]?.toUpperCase();
+        const code = mode === "auto" && taggedCode ? taggedCode : $("currency-code").value;
+        try {
+          return new Intl.NumberFormat(undefined, { style: "currency", currency: code, maximumFractionDigits: 2 }).format(numeric);
+        } catch {
+          return code + " " + new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(numeric);
+        }
+      }
+      if (actualMode === "percent") {
+        const isExplicitPercent = String(value).includes("%");
+        const ratio = isExplicitPercent || Math.abs(numeric) > 1 ? numeric / 100 : numeric;
+        return new Intl.NumberFormat(undefined, { style: "percent", maximumFractionDigits: 2 }).format(ratio);
+      }
+      return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(numeric);
+    }
+
+    function populateCurrencyOptions() {
+      const select = $("currency-code");
+      let codes = [...select.options].map((option) => option.value);
+      try {
+        codes = Intl.supportedValuesOf("currency");
+      } catch {
+        // Keep the common-currency fallback options already in the select.
+      }
+      select.replaceChildren();
+      codes.sort().forEach((code) => {
+        let symbol = code;
+        try {
+          symbol = new Intl.NumberFormat(undefined, { style: "currency", currency: code, currencyDisplay: "narrowSymbol" })
+            .formatToParts(0).find((part) => part.type === "currency")?.value || code;
+        } catch {
+          symbol = code;
+        }
+        select.add(new Option(code + " " + symbol, code));
+      });
+      select.value = codes.includes("USD") ? "USD" : codes[0];
+    }
+
+    function detectType(index) {
+      const values = state.rows.map((row) => row[index]).filter((value) => value.trim() !== "");
+      if (!values.length) return "Empty";
+      const numberCount = values.filter((value) => numericValue(value) !== null).length;
+      if (numberCount / values.length >= .8) return "Number";
+      const dateCount = values.filter((value) => !Number.isNaN(Date.parse(value)) && /[-/]/.test(value)).length;
+      if (dateCount / values.length >= .8) return "Date";
+      const uniqueCount = new Set(values).size;
+      return uniqueCount <= Math.min(20, Math.ceil(values.length * .35)) ? "Category" : "Text";
+    }
+
+    function setDataset(name, headers, rows) {
+      state.headers = headers;
+      state.rows = rows;
+      state.types = headers.map((_, index) => detectType(index));
+      state.page = 0;
+      $("table-search").value = "";
+      $("aggregation-select").value = "sum";
+      $("question-input").value = "";
+      $("answer").replaceChildren();
+      $("dataset-name").textContent = name;
+      $("dataset-meta").textContent = rows.length.toLocaleString() + " rows · " + headers.length + " columns";
+      $("notice").textContent = "Loaded " + name + " · Your data stays in this browser.";
+      $("notice").className = "notice";
+      updateOverview();
+      updatePreview();
+      updateChartControls();
+      drawChart();
+    }
+
+    function updateOverview() {
+      const missingByColumn = state.headers.map((_, index) =>
+        state.rows.filter((row) => !row[index] || !row[index].trim()).length
+      );
+      const missing = missingByColumn.reduce((sum, value) => sum + value, 0);
+      $("metric-rows").textContent = state.rows.length.toLocaleString();
+      $("metric-columns").textContent = state.headers.length.toLocaleString();
+      $("metric-numeric").textContent = state.types.filter((type) => type === "Number").length.toLocaleString();
+      $("metric-missing").textContent = missing.toLocaleString();
+
+      const body = $("summary-body");
+      body.replaceChildren();
+      state.headers.forEach((header, index) => {
+        const row = document.createElement("tr");
+        const name = document.createElement("td");
+        name.textContent = header;
+        const type = document.createElement("td");
+        const tag = document.createElement("span");
+        tag.className = "type-tag";
+        tag.textContent = state.types[index];
+        type.appendChild(tag);
+        const missingCell = document.createElement("td");
+        const count = missingByColumn[index];
+        missingCell.textContent = count + " · " + (state.rows.length ? Math.round((count / state.rows.length) * 100) : 0) + "%";
+        row.append(name, type, missingCell);
+        body.appendChild(row);
+      });
+    }
+
+    function updatePreview() {
+      const query = $("table-search").value.trim().toLocaleLowerCase();
+      state.filtered = state.rows.filter((row) => !query || row.some((value) => value.toLocaleLowerCase().includes(query)));
+      const pageCount = Math.max(1, Math.ceil(state.filtered.length / state.pageSize));
+      state.page = Math.min(state.page, pageCount - 1);
+      const start = state.page * state.pageSize;
+      const pageRows = state.filtered.slice(start, start + state.pageSize);
+
+      const head = $("table-head");
+      head.replaceChildren();
+      const headRow = document.createElement("tr");
+      for (const header of state.headers) {
+        const cell = document.createElement("th");
+        cell.scope = "col";
+        cell.textContent = header;
+        headRow.appendChild(cell);
+      }
+      head.appendChild(headRow);
+
+      const body = $("table-body");
+      body.replaceChildren();
+      for (const values of pageRows) {
+        const row = document.createElement("tr");
+        for (const [index, value] of values.entries()) {
+          const cell = document.createElement("td");
+          cell.textContent = formatValue(value, index);
+          row.appendChild(cell);
+        }
+        body.appendChild(row);
+      }
+      $("preview-subtitle").textContent = state.filtered.length.toLocaleString() + " matching rows · " + state.headers.length + " columns";
+      $("page-label").textContent = state.filtered.length
+        ? "Rows " + (start + 1) + "–" + (start + pageRows.length) + " of " + state.filtered.length.toLocaleString()
+        : "No matching rows";
+      $("prev-page").disabled = state.page === 0;
+      $("next-page").disabled = state.page >= pageCount - 1;
+    }
+
+    function updateChartControls() {
+      const group = $("group-select");
+      const value = $("value-select");
+      const xAxis = $("x-select");
+      const size = $("size-select");
+      const series = $("series-select");
+      group.replaceChildren();
+      value.replaceChildren();
+      xAxis.replaceChildren();
+      size.replaceChildren();
+      series.replaceChildren();
+      group.add(new Option("Row count", ""));
+      size.add(new Option("Bubble size", ""));
+      series.add(new Option("No series split", ""));
+      state.headers.forEach((header, index) => {
+        if (state.types[index] === "Category" || state.types[index] === "Text" || state.types[index] === "Date") {
+          group.add(new Option(header, String(index)));
+          series.add(new Option(header, String(index)));
+        }
+        if (state.types[index] === "Number") {
+          value.add(new Option(header, String(index)));
+          xAxis.add(new Option(header, String(index)));
+          size.add(new Option(header, String(index)));
+        }
+      });
+      if (!value.options.length) value.add(new Option("Count rows", ""));
+      if (!xAxis.options.length) xAxis.add(new Option("No numeric X field", ""));
+      if (!size.options.length) size.add(new Option("No numeric size field", ""));
+      const regionIndex = state.headers.findIndex((header) => /region|category|product|type|group|status/i.test(header));
+      if (regionIndex >= 0) group.value = String(regionIndex);
+      else if (group.options.length > 1) group.value = group.options[1].value;
+      const defaultSeries = [...series.options].findIndex((option) => option.value !== "" && option.value !== group.value);
+      if (defaultSeries >= 0) series.selectedIndex = defaultSeries;
+      const numberIndex = state.types.findIndex((type) => type === "Number");
+      const numericIndexes = state.types.map((type, index) => type === "Number" ? index : -1).filter((index) => index >= 0);
+      if (numberIndex >= 0) {
+        value.value = String(numberIndex);
+        xAxis.value = String(numericIndexes[1] ?? numberIndex);
+        size.value = String(numericIndexes[2] ?? "");
+      }
+      $("chart-empty").hidden = true;
+      updateChartControlVisibility();
+    }
+
+    function updateChartControlVisibility() {
+      const chartType = $("chart-type").value;
+      $("group-select").hidden = chartType === "scatter" || chartType === "bubble";
+      $("x-select").hidden = chartType !== "scatter" && chartType !== "bubble";
+      $("size-select").hidden = chartType !== "bubble";
+      $("series-select").hidden = chartType !== "stacked-bar" && chartType !== "stacked-area";
+    }
+
+    function drawChart() {
+      const canvas = $("chart");
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(320, rect.width);
+      const height = 265;
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      canvas.style.height = height + "px";
+      const ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+      ctx.clearRect(0, 0, width, height);
+
+      const groupIndex = $("group-select").value === "" ? -1 : Number($("group-select").value);
+      const valueIndex = $("value-select").value === "" ? -1 : Number($("value-select").value);
+      const xIndex = $("x-select").value === "" ? -1 : Number($("x-select").value);
+      const sizeIndex = $("size-select").value === "" ? -1 : Number($("size-select").value);
+      const seriesIndex = $("series-select").value === "" ? -1 : Number($("series-select").value);
+      const aggregation = $("aggregation-select").value;
+      const chartType = $("chart-type").value;
+      const categoricalIndex = groupIndex >= 0 ? groupIndex : -1;
+      const rawValues = valueIndex >= 0
+        ? state.rows.map((row) => numericValue(row[valueIndex])).filter((value) => value !== null)
+        : [];
+      const groups = new Map();
+      const rawPoints = [];
+
+      for (const row of state.rows) {
+        const category = categoricalIndex >= 0 ? (row[categoricalIndex]?.trim() || "(Blank)") : "All rows";
+        const value = valueIndex >= 0 ? numericValue(row[valueIndex]) : null;
+        const seriesName = seriesIndex >= 0 ? (row[seriesIndex]?.trim() || "(Blank)") : "All";
+        const xValue = xIndex >= 0 ? numericValue(row[xIndex]) : null;
+        const sizeValue = sizeIndex >= 0 ? numericValue(row[sizeIndex]) : null;
+        if (!groups.has(category)) groups.set(category, { values: [], count: 0, series: new Map() });
+        const group = groups.get(category);
+        group.count++;
+        if (value !== null) {
+          group.values.push(value);
+          if (!group.series.has(seriesName)) group.series.set(seriesName, []);
+          group.series.get(seriesName).push(value);
+        }
+        if (value !== null && xValue !== null && (chartType !== "bubble" || sizeValue !== null)) {
+          rawPoints.push({ x: xValue, y: value, size: sizeValue, label: category, series: seriesName });
+        }
+      }
+
+      const aggregate = (values, count) => {
+        if (aggregation === "count" || valueIndex < 0) return count;
+        if (!values.length) return 0;
+        return aggregation === "average"
+          ? values.reduce((sum, item) => sum + item, 0) / values.length
+          : values.reduce((sum, item) => sum + item, 0);
+      };
+      let data = [...groups.entries()].map(([label, group]) => ({
+        label,
+        value: aggregate(group.values, group.count),
+        values: group.values,
+        count: group.count,
+        series: new Map([...group.series.entries()].map(([name, values]) => [name, aggregate(values, values.length)]))
+      }));
+
+      if (chartType === "bar" || chartType === "horizontal-bar" || chartType === "lollipop" ||
+          chartType === "pareto" || chartType === "funnel") {
+        data.sort((a, b) => b.value - a.value);
+      }
+      if (chartType === "histogram" && rawValues.length) {
+        const minValue = rawValues.reduce((min, value) => Math.min(min, value), Infinity);
+        const maxValue = rawValues.reduce((max, value) => Math.max(max, value), -Infinity);
+        const binCount = Math.min(12, Math.max(5, Math.ceil(Math.sqrt(rawValues.length))));
+        const binWidth = (maxValue - minValue) / binCount || 1;
+        data = Array.from({ length: binCount }, (_, index) => {
+          const low = minValue + index * binWidth;
+          const high = index === binCount - 1 ? maxValue : low + binWidth;
+          const count = rawValues.filter((value) => value >= low && (index === binCount - 1 ? value <= high : value < high)).length;
+          return { label: formatShort(low) + "–" + formatShort(high), value: count, values: [], count, series: new Map() };
+        });
+      }
+      data = data.slice(0, 12);
+
+      const usesRawPoints = chartType === "scatter" || chartType === "bubble";
+      if (!data.length || (usesRawPoints && (!rawPoints.length || xIndex === valueIndex)) || (chartType === "bubble" && (sizeIndex < 0 || sizeIndex === xIndex || sizeIndex === valueIndex)) || (chartType === "histogram" && !rawValues.length)) {
+        $("chart-empty").hidden = false;
+        $("chart-empty").textContent = chartType === "bubble"
+          ? "Choose separate numeric fields for X, Y, and bubble size."
+          : usesRawPoints
+            ? "Choose two different numeric fields with valid values for the X and Y axes."
+          : "No values available for this chart. Choose a numeric field or use Count.";
+        return;
+      }
+      $("chart-empty").hidden = true;
+
+      const margin = { top: 14, right: 18, bottom: 55, left: 52 };
+      const plotWidth = width - margin.left - margin.right;
+      const plotHeight = height - margin.top - margin.bottom;
+      const max = Math.max(...data.map((item) => item.value), 0);
+      const min = Math.min(...data.map((item) => item.value), 0);
+      const valueRange = max - min || 1;
+      const formatter = new Intl.NumberFormat(undefined, { notation: max >= 10000 ? "compact" : "standard", maximumFractionDigits: 1 });
+      const palette = ["#a69aff", "#62d9c2", "#ffba7b", "#7eb8ff", "#ff8eaf", "#d4a3ff", "#a9df76", "#f0d477", "#71d4e5", "#ff9d78", "#a6afd0", "#cf9c72"];
+      const isCircular = ["pie", "doughnut", "polar-area"].includes(chartType);
+      const scatterYMin = usesRawPoints ? rawPoints.reduce((min, point) => Math.min(min, point.y), Infinity) : 0;
+      const scatterYMax = usesRawPoints ? rawPoints.reduce((max, point) => Math.max(max, point.y), -Infinity) : 0;
+
+      if (isCircular) {
+        const slices = data.filter((item) => item.value > 0);
+        const total = slices.reduce((sum, item) => sum + item.value, 0);
+        if (!slices.length || total <= 0) {
+          $("chart-empty").hidden = false;
+          $("chart-empty").textContent = "This chart needs positive values. Choose another chart type or aggregation.";
+          return;
+        }
+
+        const centerX = Math.min(width * .36, 180);
+        const centerY = height / 2;
+        const radius = Math.min(87, centerX - 12, height / 2 - 12);
+        let startAngle = -Math.PI / 2;
+        slices.forEach((item, index) => {
+          const endAngle = startAngle + item.value / total * Math.PI * 2;
+          const sliceRadius = chartType === "polar-area"
+            ? radius * (.4 + .6 * Math.sqrt(item.value / max))
+            : radius;
+          ctx.beginPath();
+          ctx.moveTo(centerX, centerY);
+          ctx.arc(centerX, centerY, sliceRadius, startAngle, endAngle);
+          ctx.closePath();
+          ctx.fillStyle = palette[index % palette.length];
+          ctx.fill();
+          startAngle = endAngle;
+        });
+        if (chartType === "doughnut") {
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius * .52, 0, Math.PI * 2);
+          ctx.fillStyle = "#191e2d";
+          ctx.fill();
+          ctx.fillStyle = "#e3e7f2";
+          ctx.textAlign = "center";
+          ctx.font = "700 12px system-ui, sans-serif";
+          ctx.fillText(formatValue(total, valueIndex), centerX, centerY);
+          ctx.font = "9px system-ui, sans-serif";
+          ctx.fillStyle = "#929bb1";
+          ctx.fillText("total", centerX, centerY + 14);
+        }
+
+        const legendX = Math.min(centerX + radius + 15, width - 128);
+        const legendWidth = width - legendX - 8;
+        const lineHeight = Math.min(20, (height - 16) / slices.length);
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.textBaseline = "middle";
+        slices.forEach((item, index) => {
+          const y = 12 + index * lineHeight;
+          ctx.fillStyle = palette[index % palette.length];
+          ctx.fillRect(legendX, y + 3, 8, 8);
+          const percentage = (item.value / total * 100).toFixed(1) + "%";
+          ctx.fillStyle = "#dce1ec";
+          ctx.textAlign = "left";
+          const label = item.label.length > 14 ? item.label.slice(0, 12) + "…" : item.label;
+          ctx.fillText(label, legendX + 13, y + 8, Math.max(34, legendWidth - 37));
+          ctx.textAlign = "right";
+          ctx.fillStyle = "#929bb1";
+          ctx.fillText(percentage, width - 7, y + 8);
+        });
+        return;
+      }
+
+      const magnitude = Math.pow(10, Math.floor(Math.log10(max || 1)));
+      const niceMax = Math.ceil(max / magnitude) * magnitude || 1;
+
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.strokeStyle = "rgba(255,255,255,.09)";
+      ctx.fillStyle = "#929bb1";
+      for (let tick = 0; tick <= 4; tick++) {
+        const y = margin.top + plotHeight - (tick / 4) * plotHeight;
+        ctx.beginPath(); ctx.moveTo(margin.left, y); ctx.lineTo(width - margin.right, y); ctx.stroke();
+        ctx.textAlign = "right";
+        const tickValue = usesRawPoints
+          ? scatterYMin + (scatterYMax - scatterYMin) * tick / 4
+          : niceMax * tick / 4;
+        ctx.fillText(formatValue(tickValue, valueIndex), margin.left - 9, y);
+      }
+
+      const slot = plotWidth / data.length;
+      const zeroY = margin.top + plotHeight - ((0 - min) / valueRange) * plotHeight;
+      const yFor = (value) => margin.top + plotHeight - ((value - min) / valueRange) * plotHeight;
+      function drawLabel(label, x) {
+        ctx.save();
+        ctx.translate(x, height - margin.bottom + 13);
+        ctx.rotate(-Math.PI / 5);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#929bb1";
+        ctx.fillText(label.length > 18 ? label.slice(0, 16) + "…" : label, 0, 0);
+        ctx.restore();
+      }
+
+      if (chartType === "scatter" || chartType === "bubble") {
+        const xMin = rawPoints.reduce((min, point) => Math.min(min, point.x), Infinity);
+        const xMax = rawPoints.reduce((max, point) => Math.max(max, point.x), -Infinity);
+        const yMin = scatterYMin;
+        const yMax = scatterYMax;
+        const xRange = xMax - xMin || 1;
+        const yRange = yMax - yMin || 1;
+        const minSize = chartType === "bubble" ? rawPoints.reduce((min, item) => Math.min(min, item.size), Infinity) : 0;
+        const maxSize = chartType === "bubble" ? rawPoints.reduce((max, item) => Math.max(max, item.size), -Infinity) : 0;
+        const sizeRange = maxSize - minSize || 1;
+        const points = rawPoints.slice(0, 180);
+        points.forEach((point, index) => {
+          const x = margin.left + ((point.x - xMin) / xRange) * plotWidth;
+          const y = margin.top + plotHeight - ((point.y - yMin) / yRange) * plotHeight;
+          const radius = chartType === "bubble" ? 4 + Math.sqrt(Math.max(0, point.size - minSize) / sizeRange) * 11 : 4;
+          ctx.beginPath();
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = palette[index % palette.length] + "bb";
+          ctx.fill();
+          ctx.strokeStyle = palette[index % palette.length];
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        });
+        ctx.fillStyle = "#929bb1";
+        ctx.textAlign = "center";
+        ctx.fillText(state.headers[xIndex] || "X", margin.left + plotWidth / 2, height - 12);
+      } else if (chartType === "radar") {
+        const centerX = margin.left + plotWidth / 2;
+        const centerY = margin.top + plotHeight / 2;
+        const radius = Math.min(plotWidth, plotHeight) * .43;
+        for (let ring = 1; ring <= 4; ring++) {
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius * ring / 4, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(255,255,255,.1)";
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        data.forEach((item, index) => {
+          const angle = -Math.PI / 2 + index * Math.PI * 2 / data.length;
+          const pointRadius = radius * Math.max(0, item.value) / (max || 1);
+          const x = centerX + Math.cos(angle) * pointRadius;
+          const y = centerY + Math.sin(angle) * pointRadius;
+          if (index === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+          const labelX = centerX + Math.cos(angle) * (radius + 18);
+          const labelY = centerY + Math.sin(angle) * (radius + 18);
+          ctx.fillStyle = "#aeb7ca";
+          ctx.textAlign = labelX < centerX - 5 ? "right" : labelX > centerX + 5 ? "left" : "center";
+          ctx.fillText(item.label.slice(0, 15), labelX, labelY);
+        });
+        ctx.closePath();
+        ctx.fillStyle = "#a69aff44";
+        ctx.fill();
+        ctx.strokeStyle = "#a69aff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (chartType === "box") {
+        const boxData = data.map((item) => {
+          const sorted = item.values.slice().sort((a, b) => a - b);
+          const percentile = (fraction) => sorted.length
+            ? sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * fraction))]
+            : 0;
+          return { ...item, low: percentile(0), q1: percentile(.25), median: percentile(.5), q3: percentile(.75), high: percentile(1) };
+        });
+        const boxMin = Math.min(...boxData.map((item) => item.low));
+        const boxMax = Math.max(...boxData.map((item) => item.high));
+        const boxRange = boxMax - boxMin || 1;
+        const boxY = (value) => margin.top + plotHeight - ((value - boxMin) / boxRange) * plotHeight;
+        const boxSlot = plotWidth / boxData.length;
+        boxData.forEach((item, index) => {
+          if (!item.values.length) return;
+          const x = margin.left + boxSlot * index + boxSlot / 2;
+          const boxWidth = Math.min(36, boxSlot * .55);
+          ctx.strokeStyle = "#8de0c0";
+          ctx.fillStyle = "#a69aff77";
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(x, boxY(item.low)); ctx.lineTo(x, boxY(item.high)); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x - boxWidth / 4, boxY(item.low)); ctx.lineTo(x + boxWidth / 4, boxY(item.low)); ctx.moveTo(x - boxWidth / 4, boxY(item.high)); ctx.lineTo(x + boxWidth / 4, boxY(item.high)); ctx.stroke();
+          ctx.fillRect(x - boxWidth / 2, boxY(item.q3), boxWidth, Math.max(2, boxY(item.q1) - boxY(item.q3)));
+          ctx.strokeRect(x - boxWidth / 2, boxY(item.q3), boxWidth, Math.max(2, boxY(item.q1) - boxY(item.q3)));
+          ctx.beginPath(); ctx.moveTo(x - boxWidth / 2, boxY(item.median)); ctx.lineTo(x + boxWidth / 2, boxY(item.median)); ctx.stroke();
+          drawLabel(item.label, x);
+        });
+      } else if (chartType === "stacked-bar" || chartType === "stacked-area") {
+        const seriesNames = [...new Set(state.rows.map((row) => row[seriesIndex]?.trim() || "(Blank)"))].slice(0, 8);
+        if (seriesNames.length < 2 || seriesIndex < 0) {
+          $("chart-empty").hidden = false;
+          $("chart-empty").textContent = "Choose a series column with at least two groups to stack values.";
+          return;
+        }
+        const stacks = data.map((item) => seriesNames.map((name) => item.series.get(name) || 0));
+        const stackMax = Math.max(...stacks.map((parts) => parts.reduce((sum, value) => sum + value, 0)), 1);
+        if (chartType === "stacked-bar") {
+          const barWidth = Math.min(46, slot * .6);
+          stacks.forEach((parts, index) => {
+            const x = margin.left + index * slot + (slot - barWidth) / 2;
+            let y = margin.top + plotHeight;
+            parts.forEach((value, seriesIdx) => {
+              const h = value / stackMax * plotHeight;
+              y -= h;
+              ctx.fillStyle = palette[seriesIdx % palette.length];
+              ctx.fillRect(x, y, barWidth, h);
+            });
+            drawLabel(data[index].label, x + barWidth / 2);
+          });
+        } else {
+          const xAt = (index) => margin.left + (data.length === 1 ? plotWidth / 2 : index * slot + slot / 2);
+          let previous = new Array(data.length).fill(0);
+          seriesNames.forEach((name, seriesIdx) => {
+            const next = previous.map((sum, index) => sum + stacks[index][seriesIdx]);
+            ctx.beginPath();
+            next.forEach((value, index) => {
+              const x = xAt(index), y = margin.top + plotHeight - value / stackMax * plotHeight;
+              if (!index) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            for (let index = data.length - 1; index >= 0; index--) {
+              const x = xAt(index), y = margin.top + plotHeight - previous[index] / stackMax * plotHeight;
+              ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = palette[seriesIdx % palette.length] + "bb";
+            ctx.fill();
+            previous = next;
+          });
+        }
+        ctx.font = "10px system-ui, sans-serif";
+        seriesNames.forEach((name, index) => {
+          const x = margin.left + index * Math.min(105, plotWidth / seriesNames.length);
+          ctx.fillStyle = palette[index % palette.length];
+          ctx.fillRect(x, 2, 8, 8);
+          ctx.fillStyle = "#aeb7ca";
+          ctx.textAlign = "left";
+          ctx.fillText(name.slice(0, 12), x + 12, 7);
+        });
+      } else if (chartType === "waterfall") {
+        let cumulative = 0;
+        const points = data.map((item) => {
+          const startValue = cumulative;
+          cumulative += item.value;
+          return { ...item, startValue, endValue: cumulative };
+        });
+        const waterfallMax = Math.max(cumulative, ...points.map((point) => point.endValue), 1);
+        const barWidth = Math.min(42, slot * .55);
+        points.forEach((item, index) => {
+          const x = margin.left + index * slot + (slot - barWidth) / 2;
+          const yTop = margin.top + plotHeight - item.endValue / waterfallMax * plotHeight;
+          const yBottom = margin.top + plotHeight - item.startValue / waterfallMax * plotHeight;
+          ctx.fillStyle = item.value >= 0 ? "#62d9c2" : "#ff8eaf";
+          ctx.fillRect(x, Math.min(yTop, yBottom), barWidth, Math.max(2, Math.abs(yBottom - yTop)));
+          drawLabel(item.label, x + barWidth / 2);
+        });
+      } else if (chartType === "pareto") {
+        const sorted = data.slice().sort((a, b) => b.value - a.value);
+        const total = sorted.reduce((sum, item) => sum + item.value, 0) || 1;
+        const barWidth = Math.min(40, slot * .55);
+        let cumulative = 0;
+        const points = [];
+        sorted.forEach((item, index) => {
+          const x = margin.left + index * slot + (slot - barWidth) / 2;
+          const barHeight = item.value / niceMax * plotHeight;
+          const y = margin.top + plotHeight - barHeight;
+          ctx.fillStyle = palette[index % palette.length];
+          ctx.fillRect(x, y, barWidth, barHeight);
+          cumulative += item.value;
+          points.push({ x: x + barWidth / 2, y: margin.top + plotHeight - cumulative / total * plotHeight });
+          drawLabel(item.label, x + barWidth / 2);
+        });
+        ctx.beginPath();
+        points.forEach((point, index) => { if (!index) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y); });
+        ctx.strokeStyle = "#ffba7b";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        points.forEach((point) => { ctx.beginPath(); ctx.arc(point.x, point.y, 3, 0, Math.PI * 2); ctx.fillStyle = "#ffba7b"; ctx.fill(); });
+      } else if (chartType === "horizontal-bar" || chartType === "funnel") {
+        const sorted = chartType === "funnel" ? data.slice().sort((a, b) => b.value - a.value) : data;
+        const labelWidth = chartType === "funnel" ? 0 : 86;
+        const barArea = plotWidth - labelWidth;
+        const rowHeight = plotHeight / sorted.length;
+        sorted.forEach((item, index) => {
+          const barHeight = Math.min(22, rowHeight * .62);
+          const barWidth = item.value / niceMax * barArea;
+          const x = margin.left + labelWidth;
+          const y = margin.top + index * rowHeight + (rowHeight - barHeight) / 2;
+          ctx.fillStyle = palette[index % palette.length];
+          ctx.beginPath(); ctx.roundRect(x, y, Math.max(2, barWidth), barHeight, 5); ctx.fill();
+          ctx.textBaseline = "middle";
+          ctx.textAlign = chartType === "funnel" ? "center" : "right";
+          ctx.fillStyle = "#aeb7ca";
+          ctx.fillText(item.label.slice(0, 16), chartType === "funnel" ? x - 5 : x - 8, y + barHeight / 2);
+          ctx.textAlign = "left";
+          ctx.fillStyle = "#e1e5ef";
+          ctx.fillText(formatValue(item.value, valueIndex), Math.min(width - 35, x + barWidth + 6), y + barHeight / 2);
+        });
+      } else if (chartType === "line" || chartType === "step" || chartType === "area" || chartType === "stacked-area") {
+        const points = data.map((item, index) => ({
+          x: margin.left + (data.length === 1 ? plotWidth / 2 : slot * index + slot / 2),
+          y: yFor(item.value)
+        }));
+        if (chartType === "area") {
+          ctx.beginPath();
+          ctx.moveTo(points[0].x, zeroY);
+          points.forEach((point) => ctx.lineTo(point.x, point.y));
+          ctx.lineTo(points[points.length - 1].x, zeroY);
+          ctx.closePath();
+          ctx.fillStyle = "#a69aff45";
+          ctx.fill();
+        }
+        ctx.beginPath();
+        points.forEach((point, index) => {
+          if (index === 0) ctx.moveTo(point.x, point.y);
+          else if (chartType === "step") {
+            ctx.lineTo(point.x, points[index - 1].y);
+            ctx.lineTo(point.x, point.y);
+          }
+          else ctx.lineTo(point.x, point.y);
+        });
+        ctx.strokeStyle = "#8de0c0";
+        ctx.lineWidth = 3;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.stroke();
+
+        points.forEach((point, index) => {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = "#a69aff";
+          ctx.fill();
+          ctx.fillStyle = "#dce1ec";
+          ctx.textAlign = "center";
+          ctx.fillText(formatValue(data[index].value, valueIndex), point.x, Math.max(margin.top + 6, point.y - 12));
+          drawLabel(data[index].label, point.x);
+        });
+      } else if (chartType === "lollipop") {
+        data.forEach((item, index) => {
+          const x = margin.left + slot * index + slot / 2;
+          const y = yFor(item.value);
+          ctx.beginPath(); ctx.moveTo(x, zeroY); ctx.lineTo(x, y);
+          ctx.strokeStyle = "#62d9c2"; ctx.lineWidth = 2; ctx.stroke();
+          ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fillStyle = palette[index % palette.length]; ctx.fill();
+          drawLabel(item.label, x);
+        });
+      } else {
+        const barWidth = Math.min(48, slot * .58);
+        data.forEach((item, index) => {
+          const barHeight = (item.value / niceMax) * plotHeight;
+          const x = margin.left + slot * index + (slot - barWidth) / 2;
+          const y = margin.top + plotHeight - barHeight;
+          const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+          gradient.addColorStop(0, "#a69aff");
+          gradient.addColorStop(1, "#62d9c2");
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.roundRect(x, y, barWidth, Math.max(2, barHeight), [6, 6, 0, 0]);
+          ctx.fill();
+
+          ctx.fillStyle = "#dce1ec";
+          ctx.textAlign = "center";
+          ctx.fillText(formatValue(item.value, valueIndex), x + barWidth / 2, Math.max(10, y - 10));
+          drawLabel(item.label, x + barWidth / 2);
+        });
+      }
+    }
+
+    function answerQuestion(question) {
+      const answer = $("answer");
+      answer.replaceChildren();
+      $("print-answer").hidden = true;
+      const normalized = question.toLocaleLowerCase().replace(/[?!,;:]/g, " ").replace(/\s+/g, " ").trim();
+      if (!normalized) {
+        answer.textContent = "Enter a question about the loaded data.";
+        return;
+      }
+      $("print-answer").hidden = false;
+      const questionLabel = document.createElement("p");
+      questionLabel.textContent = "Question: " + question.trim();
+      answer.appendChild(questionLabel);
+
+      const findColumn = (phrase, allowed) => {
+        const columns = state.headers.map((header, index) => ({ index, name: header.toLocaleLowerCase().trim() }))
+          .filter((column) => column.name && (!allowed || allowed(column.index)));
+        const direct = columns.filter((column) => phrase.includes(column.name)).sort((a, b) => b.name.length - a.name.length)[0];
+        if (direct) return direct.index;
+        const aliases = [
+          { words: ["revenue", "sales", "turnover"], headers: ["revenue", "sales", "turnover"] },
+          { words: ["profit", "earnings", "net income"], headers: ["profit", "earning", "income"] },
+          { words: ["units", "quantity", "qty", "items sold", "sold", "volume"], headers: ["unit", "quantity", "qty", "item", "sold", "volume"] },
+          { words: ["price", "cost", "expense", "spend"], headers: ["price", "cost", "expense", "spend"] }
+        ];
+        for (const alias of aliases) {
+          if (alias.words.some((word) => phrase.includes(word))) {
+            const match = columns.find((column) => alias.headers.some((word) => column.name.includes(word)));
+            if (match) return match.index;
+          }
+        }
+        return -1;
+      };
+      const addText = (text, tag = "p") => {
+        const element = document.createElement(tag);
+        element.textContent = text;
+        answer.appendChild(element);
+      };
+      const formatNumber = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+      const missingByColumn = state.headers.map((_, index) =>
+        state.rows.filter((row) => !row[index] || !row[index].trim()).length
+      );
+
+      if (/\b(how many|number of|count|total)\b/.test(normalized) && /\b(rows?|records?|entries?)\b/.test(normalized)) {
+        addText("There are " + formatNumber.format(state.rows.length) + " rows.");
+        return;
+      }
+      if (/\b(how many|number of|count|total)\b/.test(normalized) && /\b(columns?|fields?)\b/.test(normalized)) {
+        addText("There are " + formatNumber.format(state.headers.length) + " columns.");
+        return;
+      }
+      if (/\b(count|how many|number of)\b/.test(normalized)) {
+        const categoryIndex = findColumn(normalized, (index) => ["Category", "Text", "Date"].includes(state.types[index]));
+        if (categoryIndex >= 0) {
+          const counts = new Map();
+          state.rows.forEach((row) => {
+            const label = row[categoryIndex]?.trim() || "(Blank)";
+            counts.set(label, (counts.get(label) || 0) + 1);
+          });
+          addText("Row count by " + state.headers[categoryIndex] + ":");
+          const list = document.createElement("ol");
+          [...counts].sort((a, b) => b[1] - a[1]).slice(0, 15).forEach(([label, count]) => {
+            const item = document.createElement("li");
+            item.textContent = label + ": " + formatNumber.format(count);
+            list.appendChild(item);
+          });
+          answer.appendChild(list);
+          return;
+        }
+      }
+      if (/\b(missing|blank|empty)\b/.test(normalized)) {
+        const index = findColumn(normalized);
+        if (index >= 0) {
+          addText('"' + state.headers[index] + '" has ' + formatNumber.format(missingByColumn[index]) + " missing values.");
+        } else {
+          addText("There are " + formatNumber.format(missingByColumn.reduce((sum, count) => sum + count, 0)) + " missing cells across the dataset.");
+        }
+        return;
+      }
+
+      if (/\b(show|find|list|filter)\b/.test(normalized) && normalized.includes(" where ")) {
+        const condition = normalized.slice(normalized.indexOf(" where ") + 7);
+        const operatorMatch = condition.match(/^(.*?)\s+(does not contain|not equal to|greater than or equal to|less than or equal to|greater than|more than|less than|below|above|contains|is not|is|equals|=)\s+(.+)$/);
+        if (!operatorMatch) {
+          addText('I could not read that filter. Try: "Show rows where Region is North".');
+          return;
+        }
+        const [, columnPhrase, operator, requestedValue] = operatorMatch;
+        const index = findColumn(columnPhrase);
+        if (index < 0) {
+          addText("I could not identify a column in that filter. Use a column name from your data.");
+          return;
+        }
+        const target = requestedValue.trim().replace(/^["']|["']$/g, "");
+        const matches = state.rows.filter((row) => {
+          const value = row[index] || "";
+          if (operator === "contains") return value.toLocaleLowerCase().includes(target.toLocaleLowerCase());
+          if (operator === "does not contain") return !value.toLocaleLowerCase().includes(target.toLocaleLowerCase());
+          if (operator === "is not" || operator === "not equal to") return value.toLocaleLowerCase() !== target.toLocaleLowerCase();
+          if (["greater than", "more than", "above", "less than", "below", "greater than or equal to", "less than or equal to"].includes(operator)) {
+            const actualNumber = numericValue(value);
+            const targetNumber = numericValue(target);
+            if (actualNumber === null || targetNumber === null) return false;
+            if (operator === "greater than or equal to") return actualNumber >= targetNumber;
+            if (operator === "less than or equal to") return actualNumber <= targetNumber;
+            return ["greater than", "more than", "above"].includes(operator)
+              ? actualNumber > targetNumber
+              : actualNumber < targetNumber;
+          }
+          return value.toLocaleLowerCase() === target.toLocaleLowerCase();
+        });
+        addText(matches.length + ' matching rows for "' + state.headers[index] + '" ' + operator + ' "' + target + '".');
+        if (!matches.length) return;
+        const table = document.createElement("table");
+        table.className = "data-table";
+        const head = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        state.headers.forEach((header) => {
+          const cell = document.createElement("th");
+          cell.textContent = header;
+          headRow.appendChild(cell);
+        });
+        head.appendChild(headRow);
+        const body = document.createElement("tbody");
+        matches.slice(0, 10).forEach((row) => {
+          const tableRow = document.createElement("tr");
+          row.forEach((value, index) => {
+            const cell = document.createElement("td");
+            cell.textContent = formatValue(value, index);
+            tableRow.appendChild(cell);
+          });
+          body.appendChild(tableRow);
+        });
+        table.append(head, body);
+        answer.appendChild(table);
+        if (matches.length > 10) addText("Showing the first 10 rows.");
+        return;
+      }
+
+      const metricIndex = findColumn(normalized, (index) => state.types[index] === "Number");
+      if (metricIndex >= 0) {
+        const metricName = state.headers[metricIndex];
+        const values = state.rows.map((row) => numericValue(row[metricIndex])).filter((value) => value !== null);
+        if (!values.length) {
+          addText('There are no numeric values in "' + metricName + '".');
+          return;
+        }
+        const explicitAverage = /\baverage|avg|mean\b/.test(normalized);
+        const explicitMedian = /\bmedian\b/.test(normalized);
+        const explicitMinimum = /\bminimum|min\b/.test(normalized);
+        const explicitMaximum = /\bmaximum|max\b/.test(normalized);
+        let aggregation = explicitAverage ? "average" : explicitMedian ? "median"
+          : explicitMinimum ? "minimum" : explicitMaximum ? "maximum" : "sum";
+        const categoryIndex = findColumn(normalized, (index) =>
+          index !== metricIndex && ["Category", "Text", "Date"].includes(state.types[index]));
+        if (categoryIndex < 0 && !explicitAverage && !explicitMedian && !explicitMinimum && !explicitMaximum &&
+            /\b(highest|lowest|largest|smallest|least|most|top|bottom|best|worst)\b/.test(normalized)) {
+          aggregation = /\b(lowest|smallest|least|bottom|worst)\b/.test(normalized) ? "minimum" : "maximum";
+        }
+        if (categoryIndex >= 0) {
+          const grouped = new Map();
+          state.rows.forEach((row) => {
+            const value = numericValue(row[metricIndex]);
+            if (value === null) return;
+            const label = row[categoryIndex]?.trim() || "(Blank)";
+            if (!grouped.has(label)) grouped.set(label, []);
+            grouped.get(label).push(value);
+          });
+          const results = [...grouped].map(([label, groupValues]) => {
+            const sum = groupValues.reduce((total, value) => total + value, 0);
+            const sortedValues = groupValues.slice().sort((a, b) => a - b);
+            const middle = Math.floor(sortedValues.length / 2);
+            const result = aggregation === "average" ? sum / groupValues.length
+              : aggregation === "median" ? (sortedValues.length % 2 ? sortedValues[middle] : (sortedValues[middle - 1] + sortedValues[middle]) / 2)
+                : aggregation === "minimum" ? sortedValues[0]
+                  : aggregation === "maximum" ? sortedValues[sortedValues.length - 1]
+                    : sum;
+            return { label, value: result };
+          });
+          const rankingMatch = normalized.match(/\b(?:which|what)\s+(.+?)\s+(?:has\s+)?(?:the\s+)?(most|least|highest|lowest|largest|smallest|top|bottom|best|worst)\b/);
+          const topMatch = normalized.match(/\b(top|bottom)\s+(\d+)\b/);
+          const rankingRequested = rankingMatch || topMatch || /\b(most|least|highest|lowest|largest|smallest|top|bottom|best|worst)\b/.test(normalized);
+          if (rankingRequested) {
+            const ascending = rankingMatch
+              ? /\b(least|lowest|smallest|bottom|worst)\b/.test(rankingMatch[2])
+              : /\b(bottom|least|lowest|smallest|worst)\b/.test(normalized);
+            results.sort((a, b) => ascending ? a.value - b.value : b.value - a.value);
+            if (topMatch) {
+              const list = document.createElement("ol");
+              results.slice(0, Math.min(20, Number(topMatch[2]))).forEach((item) => {
+                const entry = document.createElement("li");
+                entry.textContent = item.label + ": " + formatValue(item.value, metricIndex);
+                list.appendChild(entry);
+              });
+              addText((ascending ? "Bottom " : "Top ") + list.children.length + " by " + metricName + ":");
+              answer.appendChild(list);
+              return;
+            }
+            const winner = results[0];
+            const label = rankingMatch?.[2] || (ascending ? "least" : "most");
+            addText('"' + winner.label + '" has the ' + label + " " + metricName + " (" + formatValue(winner.value, metricIndex) + ").");
+            return;
+          }
+          results.sort((a, b) => b.value - a.value);
+          addText(aggregation[0].toUpperCase() + aggregation.slice(1) + " " + metricName + " by " + state.headers[categoryIndex] + ":");
+          const list = document.createElement("ol");
+          results.slice(0, 12).forEach((item) => {
+            const entry = document.createElement("li");
+            entry.textContent = item.label + ": " + formatValue(item.value, metricIndex);
+            list.appendChild(entry);
+          });
+          answer.appendChild(list);
+          return;
+        }
+        const sum = values.reduce((total, value) => total + value, 0);
+        const sortedValues = values.slice().sort((a, b) => a - b);
+        const middle = Math.floor(sortedValues.length / 2);
+        const result = aggregation === "average" ? sum / values.length
+          : aggregation === "median" ? (sortedValues.length % 2 ? sortedValues[middle] : (sortedValues[middle - 1] + sortedValues[middle]) / 2)
+            : aggregation === "minimum" ? sortedValues[0]
+              : aggregation === "maximum" ? sortedValues[sortedValues.length - 1]
+                : sum;
+        addText(aggregation[0].toUpperCase() + aggregation.slice(1) + " " + metricName + " is " + formatValue(result, metricIndex) + " (" + values.length + " numeric values).");
+        return;
+      }
+
+      const numericColumns = state.headers.filter((_, index) => state.types[index] === "Number");
+      addText("I couldn’t match that question to a supported calculation. Try asking for a row/column count, missing values, sum/average/min/max, a comparison by category, top/bottom groups, or a filter such as “Show rows where Region is North”. Numeric columns: " + (numericColumns.join(", ") || "none detected") + ". Category columns: " + (state.headers.filter((_, index) => ["Category", "Text", "Date"].includes(state.types[index])).join(", ") || "none detected") + ".");
+    }
+
+    function printAnswer() {
+      if (!$("answer").textContent.trim()) return;
+      document.body.classList.remove("print-data");
+      document.body.classList.add("print-answer");
+      window.print();
+    }
+
+    function printDataset() {
+      const container = $("print-data");
+      container.replaceChildren();
+      const title = document.createElement("h1");
+      title.textContent = $("dataset-name").textContent;
+      const subtitle = document.createElement("p");
+      subtitle.textContent = state.rows.length.toLocaleString() + " rows · " + state.headers.length + " columns · Printed " + new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeStyle: "short" }).format(new Date());
+      const table = document.createElement("table");
+      table.className = "data-table";
+      const head = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      state.headers.forEach((header) => {
+        const cell = document.createElement("th");
+        cell.textContent = header;
+        headRow.appendChild(cell);
+      });
+      head.appendChild(headRow);
+      const body = document.createElement("tbody");
+      state.rows.forEach((values) => {
+        const row = document.createElement("tr");
+        values.forEach((value, index) => {
+          const cell = document.createElement("td");
+          cell.textContent = formatValue(value, index);
+          row.appendChild(cell);
+        });
+        body.appendChild(row);
+      });
+      table.append(head, body);
+      container.append(title, subtitle, table);
+      document.body.classList.remove("print-answer");
+      document.body.classList.add("print-data");
+      window.print();
+    }
+
+    window.addEventListener("afterprint", () => document.body.classList.remove("print-answer", "print-data"));
+
+    function showFile(file) {
+      if (!file) return;
+      if (!/\.(csv|tsv)$/i.test(file.name)) {
+        $("notice").textContent = "Please choose a .csv or .tsv file.";
+        $("notice").className = "notice error";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = parseCsv(String(reader.result || ""));
+          if (!parsed.headers.length || !parsed.rows.length) throw new Error("Add a header row and at least one data row.");
+          setDataset(file.name, parsed.headers, parsed.rows);
+        } catch (error) {
+          $("notice").textContent = error.message || "Could not read this file.";
+          $("notice").className = "notice error";
+        }
+      };
+      reader.onerror = () => {
+        $("notice").textContent = "Could not read this file.";
+        $("notice").className = "notice error";
+      };
+      reader.readAsText(file);
+    }
+
+    $("file-input").addEventListener("change", (event) => showFile(event.target.files[0]));
+    $("sample-button").addEventListener("click", () => setDataset("Sample sales data", ...Object.values(parseCsv(sampleCsv))));
+    $("table-search").addEventListener("input", () => { state.page = 0; updatePreview(); });
+    $("prev-page").addEventListener("click", () => { state.page--; updatePreview(); });
+    $("next-page").addEventListener("click", () => { state.page++; updatePreview(); });
+    $("group-select").addEventListener("change", drawChart);
+    $("value-select").addEventListener("change", drawChart);
+    $("x-select").addEventListener("change", drawChart);
+    $("size-select").addEventListener("change", drawChart);
+    $("series-select").addEventListener("change", drawChart);
+    $("aggregation-select").addEventListener("change", drawChart);
+    $("chart-type").addEventListener("change", () => {
+      updateChartControlVisibility();
+      drawChart();
+    });
+    $("question-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      answerQuestion($("question-input").value);
+    });
+    $("print-answer").addEventListener("click", printAnswer);
+    $("print-data-button").addEventListener("click", printDataset);
+    $("number-format").addEventListener("change", () => {
+      updatePreview();
+      drawChart();
+      if ($("question-input").value.trim()) answerQuestion($("question-input").value);
+    });
+    $("currency-code").addEventListener("change", () => {
+      updatePreview();
+      drawChart();
+      if ($("question-input").value.trim()) answerQuestion($("question-input").value);
+    });
+    $("table-nav").addEventListener("click", () => $("table-card").scrollIntoView({ behavior: "smooth" }));
+    $("chart-nav").addEventListener("click", () => $("chart-card").scrollIntoView({ behavior: "smooth" }));
+
+    const dropZone = $("drop-zone");
+    for (const eventName of ["dragenter", "dragover"]) {
+      dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropZone.classList.add("dragging");
+      });
+    }
+    for (const eventName of ["dragleave", "drop"]) {
+      dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropZone.classList.remove("dragging");
+      });
+    }
+    dropZone.addEventListener("drop", (event) => showFile(event.dataTransfer.files[0]));
+    window.addEventListener("resize", drawChart);
+
+    populateCurrencyOptions();
+    setDataset("Sample sales data", ...Object.values(parseCsv(sampleCsv)));
+  </script>
+</body>
+</html>
